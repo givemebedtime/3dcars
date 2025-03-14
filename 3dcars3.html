@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<title>3D Cars Model</title>
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link type="text/css" rel="stylesheet" href="main.css">
+	
+</head>
+<body>
+
+	<div class="dropdown" id="drop">
+		<button class="dropbtn">SELECT CAR</button>  <!--ปุ่ม SELECT CAR-->
+		<div class="dropdown-content">
+			<a href="http://localhost/3dcars/3dcars0.html">Lotus Exige 240</a>
+			<a href="http://localhost/3dcars/3dcars1.html">McLaren P1</a>
+			<a href="http://localhost/3dcars/3dcars2.html">McLaren F1 GTR</a>
+			<a href="http://localhost/3dcars/3dcars3.html">Porche 918 Spyder</a>
+			<a href="http://localhost/3dcars/3dcars4.html">Chevy Corvette C7 Stingray</a>
+		</div>
+	</div>
+	<h2>Porsche 918 Spyder</h2>
+		<h3><a href="https://sketchfab.com/3d-models/2014-porsche-918-spyder-rigged-mid-poly-1d34d42ce58c48f49146346ff67e492d" >
+			Credit : https://sketchfab.com/3d-models/2014-porsche-918-spyder-rigged-mid-poly-1d34d42ce58c4</a></h3>
+
+	<div id="container"></div>
+
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+
+		import * as THREE from 'three';
+	
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+		import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+		import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+		let camera, scene, renderer;		
+		let grid;
+		let controls;
+		
+		const wheels = [];
+
+		function init() {
+
+			const container = document.getElementById( 'container' );
+
+			//ตั้งค่าการ Render
+
+			renderer = new THREE.WebGLRenderer( { antialias: true } );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop( render );
+			renderer.toneMapping = THREE.ACESFilmicToneMapping;
+			renderer.toneMappingExposure = 0.85;
+			container.appendChild( renderer.domElement );
+
+			window.addEventListener( 'resize', onWindowResize );
+
+			
+
+			// สร้างมุมกล้อง
+
+			camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 0.1, 20 );
+			
+			
+			camera.position.set( 4.25, 1.4, - 4.5 );
+
+			controls = new OrbitControls( camera, container );
+			controls.maxDistance = 8;
+			controls.maxPolarAngle = THREE.MathUtils.degToRad( 90 );
+			controls.target.set( 0, 0.5, 0 );
+			controls.update();
+
+		
+			
+
+			//สร้าง Scene
+
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color( 0x000000 );
+			scene.environment = new RGBELoader().load( 'textures/equirectangular/quarry_01_1k.hdr' );
+			scene.environment.mapping = THREE.EquirectangularReflectionMapping;
+			scene.fog = new THREE.Fog( 0x211430, 1, 20 );
+
+			//สร้างแสง
+
+			const light = new THREE.AmbientLight( 0x1764ff ); // แสงที่เกิดบนตัว object ต่างๆ Ambient
+			scene.add( light );
+
+			const directionalLight = new THREE.DirectionalLight( 0x616c7d, 20); // แสงที่ทิศทาง
+			scene.add( directionalLight );
+
+
+			//สร้าง Grid
+
+			grid = new THREE.GridHelper( 30, 30, 0xFFFFFF, 0xFFFFFF );
+			grid.material.opacity = 0.2;
+			grid.material.depthWrite = false;
+			grid.material.transparent = true;
+			scene.add( grid );
+
+
+			//โมเดลรถ
+			const carname = ["models/gltf/Cars/exige.glb",
+			"models/gltf/Cars/p1.glb","models/gltf/Cars/mcf1s.glb",
+			"models/gltf/Cars/918s.glb","models/gltf/Cars/c7s.glb"];
+			
+
+			const dracoLoader = new DRACOLoader();
+			dracoLoader.setDecoderPath( 'jsm/libs/draco/gltf/' );
+
+			const loader = new GLTFLoader();
+			loader.setDRACOLoader( dracoLoader );
+
+			loader.load( carname[3], function ( gltf ) {
+
+				const carModel = gltf.scene.children[ 0 ];
+
+				wheels.push(
+						carModel.getObjectByName( 'WHEEL_LF' ),
+						carModel.getObjectByName( 'WHEEL_LR' ),
+						carModel.getObjectByName( 'WHEEL_RF' ),
+						carModel.getObjectByName( 'WHEEL_RR' )
+				);		
+
+				scene.add( carModel );
+
+			} );
+
+		}
+
+		// เมื่อ ปรับขนาด window browser จะจัดตำแหน่ง
+		function onWindowResize() {
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+
+			renderer.setSize( window.innerWidth, window.innerHeight );
+
+		}
+
+		// render 
+		function render() {
+
+			controls.update();
+
+			const time = - performance.now() / 1000;
+
+			for ( let i = 0; i < wheels.length; i ++ ) {
+
+				wheels[ i ].rotation.x = time * Math.PI * -1;
+
+			}
+
+			grid.position.z =  ( time ) % 1;
+
+			renderer.render( scene, camera );
+
+		}
+
+		init();
+
+	</script>
+
+
+
+</body>
+</html>
